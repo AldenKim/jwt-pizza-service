@@ -54,7 +54,7 @@ franchiseRouter.docs = [
     method: "DELETE",
     path: "/api/franchise/:franchiseId",
     requiresAuth: true,
-    description: `Delete a franchises`,
+    description: `Delete a franchise`,
     example: `curl -X DELETE localhost:3000/api/franchise/1 -H 'Authorization: Bearer tttttt'`,
     response: { message: "franchise deleted" },
   },
