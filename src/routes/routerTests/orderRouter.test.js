@@ -17,12 +17,12 @@ async function createAdminUser() {
 }
 
 async function createTestFranchiseAndStore() {
-  testFranchise = await DB.createFranchise({
+  const testFranchise = await DB.createFranchise({
     name: randomName(),
     admins: [{ email: adminUser.email }],
   });
 
-  testStore = await DB.createStore(testFranchise.id, {
+  const testStore = await DB.createStore(testFranchise.id, {
     franchiseId: testFranchise.id,
     name: "Test Store",
   });
@@ -123,7 +123,7 @@ test("create order", async () => {
     items: [{ menuId: 1, description: "Veggie", price: 0.05 }],
   };
 
-  orderRes = await request(app)
+  const orderRes = await request(app)
     .post("/api/order")
     .set("Authorization", `Bearer ${testUserAuthToken}`)
     .send(testOrder);
@@ -165,7 +165,7 @@ test("create order bad", async () => {
     };
   });
 
-  orderRes = await request(app)
+  const orderRes = await request(app)
     .post("/api/order")
     .set("Authorization", `Bearer ${testUserAuthToken}`)
     .send(testOrder);
