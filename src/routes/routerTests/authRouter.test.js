@@ -31,6 +31,24 @@ test("register bad request", async () => {
   );
 });
 
+test("unauthorized access for missing token", async () => {
+  const res = await request(app).delete("/api/auth");
+
+  expect(res.status).toBe(401);
+  expect(res.body.message).toBe("unauthorized");
+});
+
+test("unauthorized access for tampered token", async () => {
+  const tamperedToken = testUserAuthToken.slice(0, -1) + "a";
+
+  const res = await request(app)
+    .delete("/api/auth")
+    .set("Authorization", `Bearer ${tamperedToken}`);
+
+  expect(res.status).toBe(401);
+  expect(res.body.message).toBe("unauthorized");
+});
+
 test("login", async () => {
   const loginRes = await request(app).put("/api/auth").send(testUser);
   expect(loginRes.status).toBe(200);
@@ -39,6 +57,13 @@ test("login", async () => {
   const expectedUser = { ...testUser, roles: [{ role: "diner" }] };
   delete expectedUser.password;
   expect(loginRes.body.user).toMatchObject(expectedUser);
+});
+
+test("login with wrong password", async () => {
+  const wrongPasswordUser = { ...testUser, password: "wrongpassword" };
+  const loginRes = await request(app).put("/api/auth").send(wrongPasswordUser);
+  expect(loginRes.status).toBe(404);
+  expect(loginRes.body.message).toBe("unknown user");
 });
 
 test("logout", async () => {

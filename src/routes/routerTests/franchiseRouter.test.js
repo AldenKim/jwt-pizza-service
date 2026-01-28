@@ -107,6 +107,22 @@ test("create franchise", async () => {
   await DB.deleteFranchise(createFranchiseRes.body.id);
 });
 
+test("create franchise bad request", async () => {
+  const franchisePayload = {
+    name: randomName() + "franchisetest",
+    admins: [{ email: "nonexistent@example.com" }],
+  };
+
+  const createFranchiseRes = await request(app)
+    .post("/api/franchise")
+    .set("Authorization", `Bearer ${adminAuthToken}`)
+    .send(franchisePayload);
+  expect(createFranchiseRes.status).toBe(404);
+  expect(createFranchiseRes.body.message).toBe(
+    `unknown user for franchise admin ${franchisePayload.admins[0]?.email} provided`,
+  );
+});
+
 test("create franchise non admin", async () => {
   const franchisePayload = {
     name: randomName() + "franchisetest",
