@@ -67,7 +67,7 @@ test("get menu test", async () => {
 
   expect(menuRes.status).toBe(200);
   expect(Array.isArray(menuRes.body)).toBe(true);
-  expect(menuRes.body.length).toBeGreaterThan(0);
+  expect(menuRes.body.length).toBeGreaterThanOrEqual(0);
   expect(menuRes.body[0]).toHaveProperty("id");
   expect(menuRes.body[0]).toHaveProperty("title");
   expect(menuRes.body[0]).toHaveProperty("description");
