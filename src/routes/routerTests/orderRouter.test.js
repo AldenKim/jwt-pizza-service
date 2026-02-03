@@ -1,6 +1,9 @@
 const request = require("supertest");
-const app = require("../../service.js");
-const { Role, DB } = require("../../database/database.js");
+const createService = require("../../service.js");
+const { Role, DBClass } = require("../../database/database.js");
+
+let app;
+let testDB;
 
 let adminUser;
 let adminAuthToken;
@@ -12,17 +15,17 @@ async function createAdminUser() {
   user.name = randomName();
   user.email = user.name + "@admin.com";
 
-  user = await DB.addUser(user);
+  user = await testDB.addUser(user);
   return { ...user, password: "toomanysecrets" };
 }
 
 async function createTestFranchiseAndStore() {
-  const testFranchise = await DB.createFranchise({
+  const testFranchise = await testDB.createFranchise({
     name: randomName(),
     admins: [{ email: adminUser.email }],
   });
 
-  const testStore = await DB.createStore(testFranchise.id, {
+  const testStore = await testDB.createStore(testFranchise.id, {
     franchiseId: testFranchise.id,
     name: "Test Store",
   });
@@ -31,8 +34,8 @@ async function createTestFranchiseAndStore() {
 }
 
 async function deleteTestFranchiseAndStore(franchise, store) {
-  await DB.deleteStore(franchise.id, store.id);
-  await DB.deleteFranchise(franchise.id);
+  await testDB.deleteStore(franchise.id, store.id);
+  await testDB.deleteFranchise(franchise.id);
 }
 
 function randomName() {
@@ -46,6 +49,10 @@ function expectValidJwt(potentialJwt) {
 }
 
 beforeAll(async () => {
+  testDB = new DBClass("pizza_test_order");
+  await testDB.initialized;
+
+  app = createService(testDB);
   //Create admin user
   adminUser = await createAdminUser();
   const loginRes = await request(app).put("/api/auth").send({
@@ -60,6 +67,11 @@ beforeAll(async () => {
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserAuthToken = registerRes.body.token;
   expectValidJwt(testUserAuthToken);
+});
+
+afterAll(async () => {
+  await testDB.close();
+  await testDB.dropDatabase();
 });
 
 test("get menu test", async () => {

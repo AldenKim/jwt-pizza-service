@@ -1,14 +1,28 @@
 const request = require("supertest");
-const app = require("../../service");
+const createService = require("../../service.js");
+const { DBClass } = require("../../database/database.js");
+
+let app;
+let testDB;
 
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
 let testUserAuthToken;
 
 beforeAll(async () => {
+  testDB = new DBClass("pizza_test_auth");
+  await testDB.initialized;
+
+  app = createService(testDB);
+
   testUser.email = Math.random().toString(36).substring(2, 12) + "@test.com";
   const registerRes = await request(app).post("/api/auth").send(testUser);
   testUserAuthToken = registerRes.body.token;
   expectValidJwt(testUserAuthToken);
+});
+
+afterAll(async () => {
+  await testDB.close();
+  await testDB.dropDatabase();
 });
 
 test("register", async () => {

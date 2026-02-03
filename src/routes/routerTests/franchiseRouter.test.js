@@ -1,6 +1,9 @@
 const request = require("supertest");
-const app = require("../../service.js");
-const { Role, DB } = require("../../database/database.js");
+const createService = require("../../service.js");
+const { Role, DBClass } = require("../../database/database.js");
+
+let app;
+let testDB;
 
 let adminUser;
 let adminAuthToken;
@@ -13,7 +16,7 @@ async function createAdminUser() {
   user.name = randomName();
   user.email = user.name + "@admin.com";
 
-  user = await DB.addUser(user);
+  user = await testDB.addUser(user);
   return { ...user, password: "toomanysecrets" };
 }
 
@@ -28,6 +31,10 @@ function expectValidJwt(potentialJwt) {
 }
 
 beforeAll(async () => {
+  testDB = new DBClass("pizza_test_franchise");
+  await testDB.initialized;
+
+  app = createService(testDB);
   //Create admin user
   adminUser = await createAdminUser();
   const loginRes = await request(app).put("/api/auth").send({
@@ -57,7 +64,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Clean up test franchise
-  await DB.deleteFranchise(testFranchise.id);
+  await testDB.deleteFranchise(testFranchise.id);
+  await testDB.close();
+  await testDB.dropDatabase();
 });
 
 test("get franchises as regular user", async () => {
@@ -104,7 +113,7 @@ test("create franchise", async () => {
     name: franchisePayload.name,
   });
   // Clean up franchise
-  await DB.deleteFranchise(createFranchiseRes.body.id);
+  await testDB.deleteFranchise(createFranchiseRes.body.id);
 });
 
 test("create franchise bad request", async () => {
@@ -172,7 +181,7 @@ test("create store in franchise", async () => {
   expect(createStoreRes.body.franchiseId).toBe(testFranchise.id);
 
   // Clean up store in franchise
-  await DB.deleteStore(testFranchise.id, createStoreRes.body.id);
+  await testDB.deleteStore(testFranchise.id, createStoreRes.body.id);
 });
 
 test("create store in franchise non admin", async () => {
