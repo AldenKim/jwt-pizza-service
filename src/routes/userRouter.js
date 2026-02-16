@@ -35,6 +35,23 @@ function createUserRouter(authRouter, setAuth, DB) {
         token: "tttttt",
       },
     },
+    {
+      method: "GET",
+      path: "/api/user?page=1&limit=10&name=*",
+      requiresAuth: true,
+      description: "Gets a list of users",
+      example: `curl -X GET localhost:3000/api/user -H 'Authorization: Bearer tttttt'`,
+      response: {
+        users: [
+          {
+            id: 1,
+            name: "常用名字",
+            email: "a@jwt.com",
+            roles: [{ role: "admin" }],
+          },
+        ],
+      },
+    },
   ];
 
   // getUser
@@ -78,7 +95,17 @@ function createUserRouter(authRouter, setAuth, DB) {
     "/",
     authRouter.authenticateToken,
     asyncHandler(async (req, res) => {
-      res.json({ message: "not implemented", users: [], more: false });
+      if (!req.user.isRole(Role.Admin)) {
+        return res.status(403).json({ message: "unauthorized" });
+      }
+
+      const users = await DB.listUsers(
+        req.query.page,
+        req.query.limit,
+        req.query.name,
+      );
+
+      return res.json({ users });
     }),
   );
 

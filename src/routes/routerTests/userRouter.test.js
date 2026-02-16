@@ -7,6 +7,7 @@ let testDB;
 
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
 let testUserAuthToken;
+let adminToken;
 
 beforeAll(async () => {
   testDB = new DBClass("pizza_test_user");
@@ -19,6 +20,13 @@ beforeAll(async () => {
   testUserAuthToken = registerRes.body.token;
   testUser.id = registerRes.body.user.id;
   expectValidJwt(testUserAuthToken);
+
+  const loginRes = await request(app)
+    .put("/api/auth") // Assuming PUT is your login endpoint
+    .send({ email: "a@jwt.com", password: "admin" });
+
+  adminToken = loginRes.body.token;
+  expectValidJwt(adminToken);
 });
 
 afterAll(async () => {
@@ -30,6 +38,22 @@ function expectValidJwt(potentialJwt) {
   expect(potentialJwt).toMatch(
     /^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/,
   );
+}
+
+async function registerUser(service) {
+  const testUser = {
+    name: "pizza diner",
+    email: `${randomName()}@test.com`,
+    password: "a",
+  };
+  const registerRes = await service.post("/api/auth").send(testUser);
+  registerRes.body.user.password = testUser.password;
+
+  return [registerRes.body.user, registerRes.body.token];
+}
+
+function randomName() {
+  return Math.random().toString(36).substring(2, 12);
 }
 
 test("get user", async () => {
@@ -84,10 +108,76 @@ test("delete user (not implemented)", async () => {
   expect(deleteUserRes.body.message).toBe("not implemented");
 });
 
-test("list users (not implemented)", async () => {
+test("list users unauthorized", async () => {
   const listUsersRes = await request(app)
-    .get(`/api/user/`)
-    .set("Authorization", `Bearer ${testUserAuthToken}`);
+    .get("/api/user")
+    .set("Authorization", "Bearer " + testUserAuthToken);
+
+  expect(listUsersRes.status).toBe(403);
+  expect(listUsersRes.body.message).toBe("unauthorized");
+});
+
+test("list users", async () => {
+  const [user] = await registerUser(request(app));
+  const listUsersRes = await request(app)
+    .get("/api/user")
+    .set("Authorization", "Bearer " + adminToken);
+
+  expect(listUsersRes.body.users.length).toBeGreaterThan(0);
+  expect(listUsersRes.body.users.some((u) => u.email === user.email)).toBe(
+    true,
+  );
+  expect(listUsersRes.body.users.some((u) => u.name === user.name)).toBe(true);
   expect(listUsersRes.status).toBe(200);
-  expect(listUsersRes.body.message).toBe("not implemented");
+});
+
+test("test list users pagination", async () => {
+  const userCount = 11;
+  for (let i = 0; i < userCount; i++) {
+    await registerUser(request(app));
+  }
+
+  const limit = 10;
+  const listUsersRes = await request(app)
+    .get(`/api/user?page=1&limit=${limit}`)
+    .set("Authorization", "Bearer " + adminToken);
+
+  expect(listUsersRes.status).toBe(200);
+  expect(listUsersRes.body.users.length).toBe(limit);
+
+  const page2Res = await request(app)
+    .get(`/api/user?page=2&limit=${limit}`)
+    .set("Authorization", "Bearer " + adminToken);
+
+  expect(page2Res.status).toBe(200);
+  expect(page2Res.body.users.length).toBeGreaterThanOrEqual(1);
+});
+
+test("list users with name filter", async () => {
+  const uniqueName = "SpecialUser" + Math.random().toString(36).substring(2, 7);
+  const otherName = "CommonDiner";
+
+  // Create a user with a unique name
+  await request(app).post("/api/auth").send({
+    name: uniqueName,
+    email: `special@test.com`,
+    password: "a",
+  });
+
+  // Create a user with a common name
+  await request(app).post("/api/auth").send({
+    name: otherName,
+    email: `other@test.com`,
+    password: "a",
+  });
+
+  const filter = "Special*";
+  const listUsersRes = await request(app)
+    .get(`/api/user?name=${filter}`)
+    .set("Authorization", "Bearer " + adminToken);
+
+  expect(listUsersRes.status).toBe(200);
+  expect(listUsersRes.body.users.length).toBeGreaterThanOrEqual(1);
+  expect(listUsersRes.body.users.some((u) => u.name === uniqueName)).toBe(true);
+  expect(listUsersRes.body.users.some((u) => u.name === otherName)).toBe(false);
 });
