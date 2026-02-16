@@ -95,17 +95,8 @@ test("unauthorized update user", async () => {
       password: testUser.password,
     })
     .set("Authorization", `Bearer ${testUserAuthToken}`);
-
   expect(updateUserRes.status).toBe(403);
   expect(updateUserRes.body.message).toBe("unauthorized");
-});
-
-test("delete user (not implemented)", async () => {
-  const deleteUserRes = await request(app)
-    .delete(`/api/user/${testUser.id}`)
-    .set("Authorization", `Bearer ${testUserAuthToken}`);
-  expect(deleteUserRes.status).toBe(200);
-  expect(deleteUserRes.body.message).toBe("not implemented");
 });
 
 test("list users unauthorized", async () => {
@@ -180,4 +171,34 @@ test("list users with name filter", async () => {
   expect(listUsersRes.body.users.length).toBeGreaterThanOrEqual(1);
   expect(listUsersRes.body.users.some((u) => u.name === uniqueName)).toBe(true);
   expect(listUsersRes.body.users.some((u) => u.name === otherName)).toBe(false);
+});
+
+test("delete user test", async () => {
+  const [user] = await registerUser(request(app));
+
+  const deleteUserRes = await request(app)
+    .delete(`/api/user/${user.id}`)
+    .set("Authorization", "Bearer " + adminToken);
+
+  expect(deleteUserRes.status).toBe(200);
+  expect(deleteUserRes.body.message).toBe("user deleted");
+
+  const listUsersRes = await request(app)
+    .get("/api/user")
+    .set("Authorization", "Bearer " + adminToken);
+
+  expect(listUsersRes.status).toBe(200);
+  expect(listUsersRes.body.users.some((u) => u.email === user.email)).toBe(
+    false,
+  );
+});
+
+test("delete user unauthorized", async () => {
+  const [user] = await registerUser(request(app));
+
+  const deleteUserRes = await request(app)
+    .delete(`/api/user/${user.id}`)
+    .set("Authorization", "Bearer " + testUserAuthToken);
+  expect(deleteUserRes.status).toBe(403);
+  expect(deleteUserRes.body.message).toBe("unauthorized");
 });
