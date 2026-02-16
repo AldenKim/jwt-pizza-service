@@ -6,6 +6,7 @@ let app;
 let testDB;
 
 const testUser = { name: "pizza diner", email: "reg@test.com", password: "a" };
+let admin;
 let testUserAuthToken;
 let adminToken;
 
@@ -25,6 +26,7 @@ beforeAll(async () => {
     .put("/api/auth") // Assuming PUT is your login endpoint
     .send({ email: "a@jwt.com", password: "admin" });
 
+  admin = loginRes.body.user;
   adminToken = loginRes.body.token;
   expectValidJwt(adminToken);
 });
@@ -201,4 +203,14 @@ test("delete user unauthorized", async () => {
     .set("Authorization", "Bearer " + testUserAuthToken);
   expect(deleteUserRes.status).toBe(403);
   expect(deleteUserRes.body.message).toBe("unauthorized");
+});
+
+test("delete self unauthorized", async () => {
+  const deleteUserRes = await request(app)
+    .delete(`/api/user/${admin.id}`)
+    .set("Authorization", "Bearer " + adminToken);
+  expect(deleteUserRes.status).toBe(400);
+  expect(deleteUserRes.body.message).toBe(
+    "You cannot delete your own administrative account.",
+  );
 });

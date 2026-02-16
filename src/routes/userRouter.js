@@ -59,7 +59,7 @@ function createUserRouter(authRouter, setAuth, DB) {
       description: "Delete user (not implemented)",
       example: `curl -X DELETE localhost:3000/api/user/1 -H 'Authorization: Bearer tttttt'`,
       response: { message: "user deleted" },
-    }
+    },
   ];
 
   // getUser
@@ -97,8 +97,15 @@ function createUserRouter(authRouter, setAuth, DB) {
       if (!req.user.isRole(Role.Admin)) {
         return res.status(403).json({ message: "unauthorized" });
       }
-      
+
       const userId = Number(req.params.userId);
+
+      if (req.user.id === userId) {
+        return res.status(400).json({
+          message: "You cannot delete your own administrative account.",
+        });
+      }
+
       await DB.deleteUser(userId);
       res.json({ message: "user deleted" });
     }),
