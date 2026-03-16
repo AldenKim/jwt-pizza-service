@@ -112,6 +112,7 @@ function createAuthRouter(DB) {
         const user = await DB.getUser(email, password);
         const auth = await setAuth(user);
         metrics.recordAuth(true);
+        metrics.addActiveUser(user.id);
         res.json({ user: user, token: auth });
       } catch (error) {
         metrics.recordAuth(false);
