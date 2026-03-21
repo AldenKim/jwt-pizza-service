@@ -2,6 +2,13 @@ const request = require("supertest");
 const createService = require("../../service.js");
 const { DBClass } = require("../../database/database.js");
 
+jest.mock("../../logger.js", () => ({
+  httpLogger: (req, res, next) => next(),
+  factoryLogger: jest.fn(),
+  log: jest.fn(),
+  unhandledExceptionLogger: jest.fn(),
+}));
+
 let app;
 let testDB;
 

@@ -2,6 +2,13 @@ const request = require("supertest");
 const createService = require("../../service.js");
 const { Role, DBClass } = require("../../database/database.js");
 
+jest.mock("../../logger.js", () => ({
+  httpLogger: (req, res, next) => next(),
+  factoryLogger: jest.fn(),
+  log: jest.fn(),
+  unhandledExceptionLogger: jest.fn(),
+}));
+
 let app;
 let testDB;
 
@@ -164,15 +171,16 @@ test("create order bad", async () => {
 
   const originalFetch = global.fetch;
 
-  global.fetch = jest.fn().mockImplementation(() => {
-    return {
+  global.fetch = jest.fn().mockImplementation(() =>
+    Promise.resolve({
       ok: false,
+      status: 500,
       json: async () => ({
         message: "Factory error",
         reportUrl: "http://test-url.com",
       }),
-    };
-  });
+    }),
+  );
 
   const orderRes = await request(app)
     .post("/api/order")
