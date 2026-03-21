@@ -3,6 +3,7 @@ const config = require("../config.js");
 const metrics = require("../metrics.js");
 const { Role } = require("../database/database.js");
 const { asyncHandler, StatusCodeError } = require("../endpointHelper.js");
+const logger = require("../logger.js");
 
 function createOrderRouter(authRouter, DB) {
   const orderRouter = express.Router();
@@ -123,6 +124,16 @@ function createOrderRouter(authRouter, DB) {
         (sum, item) => sum + item.price,
         0,
       );
+
+      const factoryBody = {
+        diner: {
+          id: req.user.id,
+          name: req.user.name,
+          email: req.user.email,
+        },
+        order,
+      };
+
       try {
         const r = await fetch(`${config.factory.url}/api/order`, {
           method: "POST",
@@ -130,18 +141,14 @@ function createOrderRouter(authRouter, DB) {
             "Content-Type": "application/json",
             authorization: `Bearer ${config.factory.apiKey}`,
           },
-          body: JSON.stringify({
-            diner: {
-              id: req.user.id,
-              name: req.user.name,
-              email: req.user.email,
-            },
-            order,
-          }),
+          body: JSON.stringify(factoryBody),
         });
 
         const latency = Date.now() - startTime;
         const j = await r.json();
+
+        logger.factoryLogger(factoryBody, j, r.status);
+
         if (r.ok) {
           metrics.pizzaPurchase(true, latency, totalPrice, pizzaCount);
           res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
@@ -153,6 +160,7 @@ function createOrderRouter(authRouter, DB) {
           });
         }
       } catch (error) {
+        logger.log("error", "factory", { error: error.message });
         metrics.pizzaPurchase(false, Date.now() - startTime, 0, 0);
         throw error;
       }

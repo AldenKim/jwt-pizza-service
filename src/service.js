@@ -4,6 +4,7 @@ const createOrderRouter = require("./routes/orderRouter.js");
 const createFranchiseRouter = require("./routes/franchiseRouter.js");
 const createUserRouter = require("./routes/userRouter.js");
 const metrics = require("./metrics.js");
+const logger = require("./logger.js");
 const version = require("./version.json");
 const config = require("./config.js");
 
@@ -19,6 +20,7 @@ module.exports = (DB) => {
 
   const app = express();
   app.use(express.json());
+  app.use(logger.httpLogger);
   app.use(authBundle.setAuthUser);
   app.use(metrics.requestTracker);
   app.use((req, res, next) => {
@@ -67,6 +69,14 @@ module.exports = (DB) => {
 
   // Default error handler for all exceptions and errors.
   app.use((err, req, res, next) => {
+    logger.log("error", "unhandled_exception", {
+      message: err.message,
+      stack: err.stack,
+      path: req.originalUrl,
+      method: req.method,
+      errorStatusCode: err.statusCode ?? 500,
+    });
+
     res
       .status(err.statusCode ?? 500)
       .json({ message: err.message, stack: err.stack });
